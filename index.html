@@ -3,27 +3,20 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>棚卸アプリ</title>
+<title>棚卸アプリ（試作）</title>
 <script src="https://unpkg.com/html5-qrcode"></script>
 
 <style>
 body{font-family:sans-serif;text-align:center;margin:10px;}
 input{font-size:20px;margin:5px;width:80%;}
-button{font-size:20px;padding:10px;margin:10px;}
+button{font-size:18px;padding:8px;margin:5px;}
 #camera-container{position:relative;width:100%;max-width:400px;margin:auto;}
 #camera{width:100%;height:220px;margin:10px auto;overflow:hidden;position:relative;background:black;}
-/* 横長ガイド枠 */
-#barcode-guide{
-  position:absolute;
-  top:50%;
-  left:50%;
-  transform:translate(-50%, -50%);
-  width:90%;
-  height:50px;
-  border:2px dashed red;
-  pointer-events:none;
-  box-sizing:border-box;
-}
+#barcode-guide{position:absolute;top:50%;left:50%;transform:translate(-50%, -50%);
+  width:90%;height:80px;border:2px dashed red;pointer-events:none;box-sizing:border-box;z-index:2;}
+.overlay{position:absolute;left:0;width:100%;background:rgba(0,0,0,0.4);z-index:1;}
+#overlay-top{}
+#overlay-bottom{}
 </style>
 </head>
 <body>
@@ -44,18 +37,24 @@ button{font-size:20px;padding:10px;margin:10px;}
 <h2>棚卸スキャン</h2>
 担当: <span id="staffDisplay"></span><br>
 
+<!-- 手動入力ボタン -->
+<button onclick="enableKeyboard('product')">品番手入力</button>
+<button onclick="enableKeyboard('qty')">数量手入力</button><br>
+
 品番<br>
-<input id="product"><br>
+<input id="product" readonly placeholder="品番" onblur="disableKeyboard('product')"><br>
 
 数量<br>
-<input id="qty" inputmode="numeric"><br>
+<input id="qty" readonly inputmode="numeric" placeholder="数量" onblur="disableKeyboard('qty')"><br>
 
 <button onclick="send()">OK</button>
 <button onclick="clearInput()">NG</button>
 
-<!-- カメラとガイド枠 -->
+<!-- カメラとガイド枠 + オーバーレイ -->
 <div id="camera-container">
   <div id="camera"></div>
+  <div id="overlay-top" class="overlay"></div>
+  <div id="overlay-bottom" class="overlay"></div>
   <div id="barcode-guide"></div>
 </div>
 
@@ -82,7 +81,40 @@ function startApp(){
   document.getElementById("staffEntry").style.display="none";
   document.getElementById("app").style.display="block";
 
+  setOverlay(); // オーバーレイ位置調整
   startScanner();
+}
+
+// -------------------- オーバーレイ調整 --------------------
+function setOverlay(){
+  const guide = document.getElementById('barcode-guide');
+  const camera = document.getElementById('camera');
+  const overlayTop = document.getElementById('overlay-top');
+  const overlayBottom = document.getElementById('overlay-bottom');
+
+  const guideRect = guide.getBoundingClientRect();
+  const cameraRect = camera.getBoundingClientRect();
+
+  const topHeight = guideRect.top - cameraRect.top;
+  const bottomHeight = cameraRect.bottom - guideRect.bottom;
+
+  overlayTop.style.top = '0px';
+  overlayTop.style.height = topHeight + 'px';
+
+  overlayBottom.style.bottom = '0px';
+  overlayBottom.style.height = bottomHeight + 'px';
+}
+
+// -------------------- キーボード制御 --------------------
+function enableKeyboard(inputId){
+  const el = document.getElementById(inputId);
+  el.readOnly = false; // キーボードを出せるようにする
+  el.focus();          // 自動でフォーカスしてキーボード表示
+}
+
+function disableKeyboard(inputId){
+  const el = document.getElementById(inputId);
+  el.readOnly = true; // フォーカスが外れたら再び読み取りメイン
 }
 
 // -------------------- バーコードスキャナー --------------------
@@ -96,7 +128,7 @@ function startScanner(){
         { facingMode:"environment" },
         {
           fps:10,
-          qrbox:false, // 正方形QR枠は無効化
+          qrbox:false,
           formatsToSupport:[
             Html5QrcodeSupportedFormats.CODE_39,
             Html5QrcodeSupportedFormats.CODE_128,
@@ -108,19 +140,17 @@ function startScanner(){
           if(lock) return;
           if(!decodedResult || !decodedResult.resultPoints) return;
 
-          // バーコード中心の縦座標を計算
           const points = decodedResult.resultPoints;
           const ySum = points.reduce((acc,p)=>acc+p.y,0)/points.length;
 
           const guide = document.getElementById('barcode-guide');
           const guideRect = guide.getBoundingClientRect();
           const cameraRect = document.getElementById('camera').getBoundingClientRect();
-
           const guideTop = guideRect.top - cameraRect.top;
           const guideBottom = guideRect.bottom - cameraRect.top;
+          const margin = 10;
 
-          // ガイド枠内に収まるバーコードだけ処理
-          if(ySum < guideTop || ySum > guideBottom) return;
+          if(ySum < guideTop - margin || ySum > guideBottom + margin) return;
 
           lock = true;
           document.getElementById("beep").play();
