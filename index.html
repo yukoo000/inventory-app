@@ -10,7 +10,20 @@
 body{font-family:sans-serif;text-align:center;margin:10px;}
 input{font-size:20px;margin:5px;width:80%;}
 button{font-size:20px;padding:10px;margin:10px;}
-#camera{width:100%;max-width:400px;height:220px;margin:10px auto;overflow:hidden;position:relative;background:black;}
+#camera-container{position:relative;width:100%;max-width:400px;margin:auto;}
+#camera{width:100%;height:220px;margin:10px auto;overflow:hidden;position:relative;background:black;}
+/* 横長ガイド枠 */
+#barcode-guide{
+  position:absolute;
+  top:50%;
+  left:50%;
+  transform:translate(-50%, -50%);
+  width:90%;
+  height:50px;
+  border:2px dashed red;
+  pointer-events:none;
+  box-sizing:border-box;
+}
 </style>
 </head>
 <body>
@@ -40,7 +53,12 @@ button{font-size:20px;padding:10px;margin:10px;}
 <button onclick="send()">OK</button>
 <button onclick="clearInput()">NG</button>
 
-<div id="camera"></div>
+<!-- カメラとガイド枠 -->
+<div id="camera-container">
+  <div id="camera"></div>
+  <div id="barcode-guide"></div>
+</div>
+
 <p id="msg"></p>
 </div>
 
@@ -52,7 +70,6 @@ let scanner;
 
 // ★あなたのGAS URL
 const GAS_URL="https://script.google.com/macros/s/AKfycbwT67wBt95_UMkiClCDVivSh6p6StfjamTCfDKB5oXADMbBHLxcJVSrjuu6gYDX1bjJ/exec";
-
 
 // -------------------- 担当ID入力後開始 --------------------
 function startApp(){
@@ -68,49 +85,63 @@ function startApp(){
   startScanner();
 }
 
-// -------------------- QRコードスキャナー --------------------
+// -------------------- バーコードスキャナー --------------------
 function startScanner(){
-scanner = new Html5Qrcode("camera");
+  scanner = new Html5Qrcode("camera");
 
-Html5Qrcode.getCameras().then(devices=>{
-if(devices && devices.length){
+  Html5Qrcode.getCameras().then(devices=>{
+    if(devices && devices.length){
 
-scanner.start(
-{ facingMode:"environment" },
-{
-fps:10,
-qrbox:{ width:320, height:120 },
-formatsToSupport:[
-Html5QrcodeSupportedFormats.CODE_39,
-Html5QrcodeSupportedFormats.CODE_128,
-Html5QrcodeSupportedFormats.EAN_13,
-Html5QrcodeSupportedFormats.EAN_8
-]
-},
-(code)=>{
-if(lock) return;
-lock=true;
+      scanner.start(
+        { facingMode:"environment" },
+        {
+          fps:10,
+          qrbox:false, // 正方形QR枠は無効化
+          formatsToSupport:[
+            Html5QrcodeSupportedFormats.CODE_39,
+            Html5QrcodeSupportedFormats.CODE_128,
+            Html5QrcodeSupportedFormats.EAN_13,
+            Html5QrcodeSupportedFormats.EAN_8
+          ]
+        },
+        (decodedText, decodedResult)=>{
+          if(lock) return;
+          if(!decodedResult || !decodedResult.resultPoints) return;
 
-document.getElementById("beep").play();
+          // バーコード中心の縦座標を計算
+          const points = decodedResult.resultPoints;
+          const ySum = points.reduce((acc,p)=>acc+p.y,0)/points.length;
 
-if(step===0){
-document.getElementById("product").value=code;
-step=1;
-}else{
-document.getElementById("qty").value=code;
-step=0;
+          const guide = document.getElementById('barcode-guide');
+          const guideRect = guide.getBoundingClientRect();
+          const cameraRect = document.getElementById('camera').getBoundingClientRect();
+
+          const guideTop = guideRect.top - cameraRect.top;
+          const guideBottom = guideRect.bottom - cameraRect.top;
+
+          // ガイド枠内に収まるバーコードだけ処理
+          if(ySum < guideTop || ySum > guideBottom) return;
+
+          lock = true;
+          document.getElementById("beep").play();
+
+          if(step===0){
+            document.getElementById("product").value=decodedText;
+            step=1;
+          }else{
+            document.getElementById("qty").value=decodedText;
+            step=0;
+          }
+
+          setTimeout(()=>{lock=false;},1000);
+        }
+      );
+
+    }else{
+      alert("カメラが見つかりません");
+    }
+  }).catch(err=>alert("カメラ起動エラー: "+err));
 }
-
-setTimeout(()=>{lock=false;},1000);
-}
-);
-
-}else{
-alert("カメラが見つかりません");
-}
-}).catch(err=>alert("カメラ起動エラー: "+err));
-}
-
 
 // -------------------- データ送信 --------------------
 function send(){
