@@ -53,6 +53,7 @@ let scanner;
 // ★あなたのGAS URL
 const GAS_URL="https://script.google.com/macros/s/AKfycbwT67wBt95_UMkiClCDVivSh6p6StfjamTCfDKB5oXADMbBHLxcJVSrjuu6gYDX1bjJ/exec";
 
+
 // -------------------- 担当ID入力後開始 --------------------
 function startApp(){
   const id=document.getElementById("staffInput").value.trim();
@@ -69,26 +70,47 @@ function startApp(){
 
 // -------------------- QRコードスキャナー --------------------
 function startScanner(){
-  scanner = new Html5Qrcode("camera");
-  Html5Qrcode.getCameras().then(devices=>{
-    if(devices && devices.length){
-      scanner.start(
-        {facingMode:"environment"},
-        {fps:5, qrbox:200},
-        (code)=>{
-          if(lock) return;
-          lock=true;
-          document.getElementById("beep").play();
+scanner = new Html5Qrcode("camera");
 
-          if(step===0){ document.getElementById("product").value=code; step=1; }
-          else{ document.getElementById("qty").value=code; step=0; }
+Html5Qrcode.getCameras().then(devices=>{
+if(devices && devices.length){
 
-          setTimeout(()=>{lock=false;},1000);
-        }
-      );
-    }else{ alert("カメラが見つかりません"); }
-  }).catch(err=>alert("カメラ起動エラー: "+err));
+scanner.start(
+{ facingMode:"environment" },
+{
+fps:10,
+qrbox:{ width:320, height:120 },
+formatsToSupport:[
+Html5QrcodeSupportedFormats.CODE_39,
+Html5QrcodeSupportedFormats.CODE_128,
+Html5QrcodeSupportedFormats.EAN_13,
+Html5QrcodeSupportedFormats.EAN_8
+]
+},
+(code)=>{
+if(lock) return;
+lock=true;
+
+document.getElementById("beep").play();
+
+if(step===0){
+document.getElementById("product").value=code;
+step=1;
+}else{
+document.getElementById("qty").value=code;
+step=0;
 }
+
+setTimeout(()=>{lock=false;},1000);
+}
+);
+
+}else{
+alert("カメラが見つかりません");
+}
+}).catch(err=>alert("カメラ起動エラー: "+err));
+}
+
 
 // -------------------- データ送信 --------------------
 function send(){
