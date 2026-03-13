@@ -9,7 +9,7 @@
 <style>
 body{font-family:sans-serif;text-align:center;margin:10px;}
 input{font-size:20px;margin:5px;width:80%;}
-button{font-size:20px;padding:10px;margin:10px;position:relative;z-index:10;}
+button{font-size:20px;padding:10px;margin:10px;}
 #camera{width:100%;max-width:400px;height:220px;margin:10px auto;overflow:hidden;position:relative;background:black;}
 </style>
 </head>
@@ -19,108 +19,105 @@ button{font-size:20px;padding:10px;margin:10px;position:relative;z-index:10;}
 <source src="https://actions.google.com/sounds/v1/cartoon/clang_and_wobble.ogg">
 </audio>
 
-<!-- ログイン -->
-<div id="login">
-<h2>棚卸ログイン</h2>
-<input id="staff" placeholder="担当ID"><br>
-<input id="pass" placeholder="パスワード" type="password"><br>
-<button onclick="login()">ログイン</button>
-<p id="loginMsg"></p>
+<!-- 担当ID入力 -->
+<div id="staffEntry">
+<h2>担当ID入力</h2>
+<input id="staffInput" placeholder="担当ID"><br>
+<button onclick="startApp()">開始</button>
 </div>
 
-<!-- アプリ -->
+<!-- アプリ画面 -->
 <div id="app" style="display:none">
 <h2>棚卸スキャン</h2>
+担当: <span id="staffDisplay"></span><br>
+
 品番<br>
 <input id="product"><br>
+
 数量<br>
-<input id="qty"><br>
+<input id="qty" inputmode="numeric"><br>
+
 <button onclick="send()">OK</button>
 <button onclick="clearInput()">NG</button>
+
 <div id="camera"></div>
 <p id="msg"></p>
 </div>
 
 <script>
-let step=0;
-let scanner;
 let staffID='';
+let step=0;
 let lock=false;
+let scanner;
 
-// ★指定されたGAS URL
-const GAS_URL="https://script.google.com/macros/s/AKfycbxCzn5m1yjvaSlLiJlR8MvCHP7535ipmYGRY10gQC78WFwwauRkb-8vMBrZd0byMzU/exec";
+// ★あなたのGAS URL
+const GAS_URL="https://script.google.com/macros/s/AKfycbwT67wBt95_UMkiClCDVivSh6p6StfjamTCfDKB5oXADMbBHLxcJVSrjuu6gYDX1bjJ/exec";
 
-// ===================== ログイン =====================
-function login(){
-  const id=document.getElementById("staff").value.trim();
-  const pass=document.getElementById("pass").value.trim();
-  if(!id || !pass){document.getElementById("loginMsg").innerText="IDとパスワードを入力してください"; return;}
+// -------------------- 担当ID入力後開始 --------------------
+function startApp(){
+  const id=document.getElementById("staffInput").value.trim();
+  if(!id){ alert("担当IDを入力してください"); return; }
 
-fetch(GAS_URL, {
-  method: 'POST',
-  mode: 'cors',
-  headers: {'Content-Type': 'text/plain'},
-  body: JSON.stringify({mode: "login", id: id, pass: pass})
-})
-  .then(res=>res.json())
-  .then(data=>{
-    if(data.status==="ok"){
-      staffID=id;
-      document.getElementById("login").style.display="none";
-      document.getElementById("app").style.display="block";
-      startScanner();
-    }else{
-      document.getElementById("loginMsg").innerText="IDまたはパスワードが違います";
-    }
-  })
-  .catch(err=>{
-    document.getElementById("loginMsg").innerText="通信エラー。公開設定を確認してください";
-    console.error(err);
-  });
+  staffID = id;
+  document.getElementById("staffDisplay").innerText = staffID;
+
+  document.getElementById("staffEntry").style.display="none";
+  document.getElementById("app").style.display="block";
+
+  startScanner();
 }
 
-// ===================== スキャナー =====================
+// -------------------- QRコードスキャナー --------------------
 function startScanner(){
   scanner = new Html5Qrcode("camera");
   Html5Qrcode.getCameras().then(devices=>{
     if(devices && devices.length){
-      scanner.start({ facingMode:"environment" }, { fps:2, qrbox:200 },
+      scanner.start(
+        {facingMode:"environment"},
+        {fps:5, qrbox:200},
         (code)=>{
           if(lock) return;
           lock=true;
           document.getElementById("beep").play();
-          if(step===0){document.getElementById("product").value=code; step=1;}
-          else{document.getElementById("qty").value=code; step=0;}
+
+          if(step===0){ document.getElementById("product").value=code; step=1; }
+          else{ document.getElementById("qty").value=code; step=0; }
+
           setTimeout(()=>{lock=false;},1000);
         }
       );
-    }else{alert("カメラが見つかりません");}
+    }else{ alert("カメラが見つかりません"); }
   }).catch(err=>alert("カメラ起動エラー: "+err));
 }
 
-// ===================== 棚卸保存 =====================
+// -------------------- データ送信 --------------------
 function send(){
   const product=document.getElementById("product").value;
   const qty=document.getElementById("qty").value;
-  if(!product || !qty){alert("品番と数量を入力"); return;}
+  if(!product || !qty){ alert("品番と数量を入力"); return; }
 
   fetch(GAS_URL,{
     method:'POST',
-    headers:{'Content-Type':'application/json'},
+    mode:'cors',
+    headers:{'Content-Type':'text/plain'},
     body:JSON.stringify({staff:staffID, product:product, qty:qty})
   })
   .then(res=>res.json())
   .then(data=>{
-    if(data.status==="ok"){document.getElementById("msg").innerText="保存しました"; clearInput();}
-    else{document.getElementById("msg").innerText="保存失敗";}
+    if(data.status==="ok"){
+      document.getElementById("msg").innerText="保存しました";
+      clearInput();
+    }else{
+      document.getElementById("msg").innerText="保存失敗";
+    }
   })
   .catch(err=>{
-    alert("通信エラー。公開設定を確認してください");
+    alert("通信エラー");
     console.error(err);
   });
 }
 
-// ===================== 入力クリア =====================
+// -------------------- 入力クリア --------------------
 function clearInput(){
   document.getElementById("product").value="";
   document.getElementById("qty").value="";
