@@ -187,18 +187,10 @@ Html5Qrcode.getCameras().then(devices=>{
 if(devices && devices.length){
 
 scanner.start(
-{ facingMode:"environment" },
+{ facingMode: { exact: "environment" } },
 
 {
 fps:5,
-
-formatsToSupport:[
-Html5QrcodeSupportedFormats.CODE_39,
-Html5QrcodeSupportedFormats.CODE_128,
-Html5QrcodeSupportedFormats.EAN_13,
-Html5QrcodeSupportedFormats.EAN_8
-]
-
 },
 
 (decodedText,decodedResult)=>{
@@ -206,22 +198,6 @@ Html5QrcodeSupportedFormats.EAN_8
 if(lock) return;
 
 if(!decodedResult || !decodedResult.resultPoints) return;
-
-const points=decodedResult.resultPoints;
-
-const ySum=points.reduce((acc,p)=>acc+p.y,0)/points.length;
-
-const guide=document.getElementById('barcode-guide');
-
-const guideRect=guide.getBoundingClientRect();
-const cameraRect=document.getElementById('camera').getBoundingClientRect();
-
-const guideTop=guideRect.top-cameraRect.top;
-const guideBottom=guideRect.bottom-cameraRect.top;
-
-const margin=10;
-
-if(ySum < guideTop-margin || ySum > guideBottom+margin) return;
 
 lock=true;
 
