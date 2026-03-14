@@ -97,7 +97,11 @@ placeholder="数量"
 onblur="disableKeyboard('qty')"><br>
 
 <button onclick="saveData()">OK</button>
-<button onclick="clearInput()">NG</button>
+<button onclick="clearInput()">NG</button><br>
+
+<button onclick="clearProduct()">品番削除</button>
+<button onclick="clearQty()">数量削除</button><br>
+
 <button onclick="sendBuffer()">まとめて送信</button>
 <button onclick="restartCamera()">カメラ再起動</button>
 
@@ -203,7 +207,7 @@ if(result){
 
 const now = Date.now();
 
-if(now - lastScanTime < 1200) return;
+if(now - lastScanTime < 700) return;
 
 lastScanTime = now;
 
@@ -368,6 +372,26 @@ document.getElementById("qty").value="";
 step=0;
 
 }
+
+
+// -------------- 品番or数量クリア --------------
+
+function clearProduct(){
+
+document.getElementById("product").value="";
+
+step=0;
+
+}
+
+function clearQty(){
+
+document.getElementById("qty").value="";
+
+step=1;
+
+}
+
 
 </script>
 
