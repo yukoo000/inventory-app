@@ -34,17 +34,20 @@ margin:5px;
 
 /* カメラ */
 
-#camera-container{
-position:relative;
-max-width:400px;
-margin:auto;
+#camera-container {
+  position: relative;
+  width: 100vw;        /* ビューポート幅 */
+  max-width: 400px;    /* 任意 */
+  height: calc(100vw * 9 / 16); /* 16:9に合わせて高さを決める */
+  margin: auto;
+  overflow: hidden;    /* 黒帯を隠す */
 }
 
-#camera{
-width:100%;
-aspect-ratio:16/9;
-object-fit:cover;
-background:black;
+#camera {
+  width: 100vw;        /* ビューポート幅いっぱい */
+  height: 100%;        /* 高さは親に合わせる */
+  object-fit: cover;   /* 映像を枠いっぱいにクロップ */
+  transform: scaleX(-1); /* 必要なら前面カメラ反転用（背面カメラなら不要） */
 }
 
 /* スキャン範囲 */
