@@ -1,186 +1,341 @@
 <!DOCTYPE html>
+
 <html>
 <head>
+
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>棚卸スキャン（ZXing完成版）</title>
+
+<title>棚卸スキャン</title>
+
 <script src="https://unpkg.com/@zxing/library@latest"></script>
 
 <style>
+
 body{
-  font-family:sans-serif;
-  text-align:center;
-  margin:10px;
+font-family:sans-serif;
+text-align:center;
+margin:10px;
 }
 
+/* 入力 */
+
 input{
-  font-size:20px;
-  margin:5px;
-  width:80%;
+font-size:20px;
+margin:5px;
+width:80%;
 }
 
 button{
-  font-size:18px;
-  padding:8px;
-  margin:5px;
+font-size:18px;
+padding:8px;
+margin:5px;
 }
 
-/* カメラコンテナ */
-#camera-container{
-  position:relative;
-  width:100vw;
-  max-width:400px;
-  margin:auto;
-  overflow:hidden;
-  height:calc(100vw * 9 / 16); /* 16:9比率 */
-  background:black;
+/* カメラ */
+
+#camera-container {
+  position: relative;
+  width: 100vw;        /* ビューポート幅 */
+  max-width: 400px;    /* 任意 */
+  height: calc(100vw * 9 / 16); /* 16:9に合わせて高さを決める */
+  margin: auto;
+  overflow: hidden;    /* 黒帯を隠す */
 }
 
-/* video カメラ */
-#camera{
-  width:100%;
-  height:100%;
-  object-fit:cover; /* 映像を枠いっぱいに拡大 */
+#camera {
+  width: 100vw;        /* ビューポート幅いっぱい */
+  height: 100%;        /* 高さは親に合わせる */
+  object-fit: cover;   /* 映像を枠いっぱいにクロップ */
+  transform: scaleX(-1); /* 必要なら前面カメラ反転用（背面カメラなら不要） */
 }
 
-/* 赤枠スキャン範囲 */
+/* スキャン範囲 */
+
 #scan-area{
-  position:absolute;
-  top:50%;
-  left:50%;
-  transform:translate(-50%,-50%);
-  width:260px;
-  height:80px;
-  border:3px solid red;
-  pointer-events:none;
+position:absolute;
+top:50%;
+left:50%;
+transform:translate(-50%,-50%);
+width:260px;
+height:80px;
+border:3px solid red;
+pointer-events:none;
 }
+
 </style>
+
 </head>
 
 <body>
+
 <audio id="beep">
-  <source src="https://actions.google.com/sounds/v1/cartoon/clang_and_wobble.ogg">
+<source src="https://actions.google.com/sounds/v1/cartoon/clang_and_wobble.ogg">
 </audio>
 
 <!-- 担当ID -->
+
 <div id="staffEntry">
-  <h2>担当ID入力</h2>
-  <input id="staffInput" placeholder="担当ID"><br>
-  <button onclick="startApp()">開始</button>
+
+<h2>担当ID入力</h2>
+
+<input id="staffInput" placeholder="担当ID"><br>
+
+<button onclick="startApp()">開始</button>
+
 </div>
 
 <!-- アプリ -->
+
 <div id="app" style="display:none">
-  <h2>棚卸スキャン</h2>
-  担当: <span id="staffDisplay"></span><br>
-  <button onclick="enableKeyboard('product')">品番手入力</button>
-  <button onclick="enableKeyboard('qty')">数量手入力</button><br>
-  品番<br>
-  <input id="product" readonly placeholder="品番" onblur="disableKeyboard('product')"><br>
-  数量<br>
-  <input id="qty" readonly inputmode="numeric" placeholder="数量" onblur="disableKeyboard('qty')"><br>
-  <button onclick="send()">OK</button>
-  <button onclick="clearInput()">NG</button>
-  <button onclick="restartCamera()">カメラ再起動</button>
-  <br><br>
-  <div id="camera-container">
-    <video id="camera" autoplay></video>
-    <div id="scan-area"></div>
-  </div>
-  <p id="msg"></p>
+
+<h2>棚卸スキャン</h2>
+
+担当: <span id="staffDisplay"></span><br>
+
+<button onclick="enableKeyboard('product')">品番手入力</button> <button onclick="enableKeyboard('qty')">数量手入力</button><br>
+
+品番<br>
+
+<input id="product" readonly placeholder="品番"
+onblur="disableKeyboard('product')"><br>
+
+数量<br>
+
+<input id="qty" readonly inputmode="numeric"
+placeholder="数量"
+onblur="disableKeyboard('qty')"><br>
+
+<button onclick="send()">OK</button> <button onclick="clearInput()">NG</button> <button onclick="restartCamera()">カメラ再起動</button>
+
+<br><br>
+
+<div id="camera-container">
+
+<video id="camera" autoplay></video>
+
+<div id="scan-area"></div>
+
+</div>
+
+<p id="msg"></p>
+
 </div>
 
 <script>
+
 let staffID='';
+
 let step=0;
+
 let lock=false;
+
 let codeReader;
+
 let lastScanTime=0;
 
-// ★GAS URL
+
+// GAS URL
+
 const GAS_URL="https://script.google.com/macros/s/AKfycbwT67wBt95_UMkiClCDVivSh6p6StfjamTCfDKB5oXADMbBHLxcJVSrjuu6gYDX1bjJ/exec";
 
+
 // ---------------- 開始 ----------------
+
 function startApp(){
-  const id=document.getElementById("staffInput").value.trim();
-  if(!id){ alert("担当IDを入力してください"); return; }
-  staffID=id;
-  document.getElementById("staffDisplay").innerText=id;
-  document.getElementById("staffEntry").style.display="none";
-  document.getElementById("app").style.display="block";
-  startScanner();
+
+const id=document.getElementById("staffInput").value.trim();
+
+if(!id){
+alert("担当IDを入力してください");
+return;
 }
+
+staffID=id;
+
+document.getElementById("staffDisplay").innerText=id;
+
+document.getElementById("staffEntry").style.display="none";
+document.getElementById("app").style.display="block";
+
+startScanner();
+
+}
+
 
 // ---------------- キーボード ----------------
-function enableKeyboard(id){ const el=document.getElementById(id); el.readOnly=false; el.focus(); }
-function disableKeyboard(id){ document.getElementById(id).readOnly=true; }
+
+function enableKeyboard(id){
+
+const el=document.getElementById(id);
+
+el.readOnly=false;
+
+el.focus();
+
+}
+
+function disableKeyboard(id){
+
+document.getElementById(id).readOnly=true;
+
+}
+
 
 // ---------------- スキャナー ----------------
+
 function startScanner(){
-  const hints = new Map();
-  hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS,[ZXing.BarcodeFormat.CODE_39]);
-  codeReader = new ZXing.BrowserMultiFormatReader(hints);
-  const video=document.getElementById("camera");
 
-  codeReader.decodeFromVideoDevice(null,video,(result,err)=>{
-    if(result){
-      const now=Date.now();
-      if(now-lastScanTime<1200) return; // 1.2秒間隔
-      lastScanTime=now;
-      if(lock) return;
-      lock=true;
-      const text=result.getText();
-      document.getElementById("beep").play();
+const hints = new Map();
 
-      // 赤枠範囲制限
-      if(result.resultPoints){
-        let centerY=0;
-        result.resultPoints.forEach(p=>centerY+=p.getY());
-        centerY/=result.resultPoints.length;
-        const rect=video.getBoundingClientRect();
-        const guideTop=rect.height/2-40;
-        const guideBottom=rect.height/2+40;
-        if(centerY<guideTop || centerY>guideBottom){ lock=false; return; }
-      }
+hints.set(
+ZXing.DecodeHintType.POSSIBLE_FORMATS,
+[ZXing.BarcodeFormat.CODE_39]
+);
 
-      if(step===0){ document.getElementById("product").value=text; step=1; }
-      else{ document.getElementById("qty").value=text; step=0; }
+codeReader = new ZXing.BrowserMultiFormatReader(hints);
 
-      setTimeout(()=>{lock=false;},500);
-    }
-  });
+const video = document.getElementById("camera");
+
+codeReader.decodeFromVideoDevice(
+null,
+video,
+(result,err)=>{
+
+if(result){
+
+const now = Date.now();
+
+if(now - lastScanTime < 1200) return;
+
+lastScanTime = now;
+
+if(lock) return;
+
+lock=true;
+
+const text=result.getText();
+
+document.getElementById("beep").play();
+
+if(step===0){
+
+document.getElementById("product").value=text;
+
+step=1;
+
+}else{
+
+document.getElementById("qty").value=text;
+
+step=0;
+
 }
+
+setTimeout(()=>{
+lock=false;
+},500);
+
+}
+
+}
+);
+
+}
+
 
 // ---------------- カメラ再起動 ----------------
-function restartCamera(){ if(codeReader){ codeReader.reset(); } startScanner(); }
+
+function restartCamera(){
+
+if(codeReader){
+
+codeReader.reset();
+
+}
+
+startScanner();
+
+}
+
 
 // ---------------- 送信 ----------------
-function send(){
-  const product=document.getElementById("product").value;
-  const qty=document.getElementById("qty").value;
-  if(!product || !qty){ alert("品番と数量を入力"); return; }
 
-  fetch(GAS_URL,{
-    method:'POST',
-    mode:'cors',
-    headers:{'Content-Type':'text/plain'},
-    body:JSON.stringify({staff:staffID,product:product,qty:qty})
-  })
-  .then(res=>res.json())
-  .then(data=>{
-    if(data.status==="ok"){ document.getElementById("msg").innerText="保存しました"; clearInput(); }
-    else{ document.getElementById("msg").innerText="保存失敗"; }
-  })
-  .catch(err=>{ alert("通信エラー"); console.error(err); });
+function send(){
+
+const product=document.getElementById("product").value;
+
+const qty=document.getElementById("qty").value;
+
+if(!product || !qty){
+
+alert("品番と数量を入力");
+
+return;
+
 }
+
+fetch(GAS_URL,{
+
+method:'POST',
+
+mode:'cors',
+
+headers:{
+'Content-Type':'text/plain'
+},
+
+body:JSON.stringify({
+staff:staffID,
+product:product,
+qty:qty
+})
+
+})
+
+.then(res=>res.json())
+
+.then(data=>{
+
+if(data.status==="ok"){
+
+document.getElementById("msg").innerText="保存しました";
+
+clearInput();
+
+}else{
+
+document.getElementById("msg").innerText="保存失敗";
+
+}
+
+})
+
+.catch(err=>{
+
+alert("通信エラー");
+
+console.error(err);
+
+});
+
+}
+
 
 // ---------------- 入力クリア ----------------
+
 function clearInput(){
-  document.getElementById("product").value="";
-  document.getElementById("qty").value="";
-  step=0;
-  document.getElementById("msg").innerText="入力クリア";
+
+document.getElementById("product").value="";
+document.getElementById("qty").value="";
+
+step=0;
+
+document.getElementById("msg").innerText="入力クリア";
+
 }
+
 </script>
+
 </body>
 </html>
