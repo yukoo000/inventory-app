@@ -1,54 +1,44 @@
 <!DOCTYPE html>
 <html>
 <head>
+
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>棚卸アプリ（試作）</title>
 
-<script src="https://unpkg.com/html5-qrcode"></script>
+<title>棚卸スキャン</title>
+
+<script src="https://unpkg.com/@zxing/library@latest"></script>
 
 <style>
-body{font-family:sans-serif;text-align:center;margin:10px;}
-input{font-size:20px;margin:5px;width:80%;}
-button{font-size:18px;padding:8px;margin:5px;}
 
-#camera-container{
-position:relative;
-width:100%;
-max-width:400px;
-margin:auto;
+body{
+font-family:sans-serif;
+text-align:center;
+margin:10px;
+}
+
+input{
+font-size:20px;
+margin:5px;
+width:80%;
+}
+
+button{
+font-size:18px;
+padding:8px;
+margin:5px;
 }
 
 #camera{
 width:100%;
+max-width:400px;
 height:220px;
-margin:10px auto;
-overflow:hidden;
-position:relative;
 background:black;
+margin:auto;
 }
 
-#barcode-guide{
-position:absolute;
-top:50%;
-left:50%;
-transform:translate(-50%, -50%);
-width:90%;
-height:80px;
-border:2px dashed red;
-pointer-events:none;
-box-sizing:border-box;
-z-index:2;
-}
-
-.overlay{
-position:absolute;
-left:0;
-width:100%;
-background:rgba(0,0,0,0.4);
-z-index:1;
-}
 </style>
+
 </head>
 
 <body>
@@ -58,41 +48,46 @@ z-index:1;
 </audio>
 
 <!-- 担当ID -->
+
 <div id="staffEntry">
+
 <h2>担当ID入力</h2>
+
 <input id="staffInput" placeholder="担当ID"><br>
+
 <button onclick="startApp()">開始</button>
+
 </div>
 
 <!-- アプリ -->
+
 <div id="app" style="display:none">
 
 <h2>棚卸スキャン</h2>
+
 担当: <span id="staffDisplay"></span><br>
 
 <button onclick="enableKeyboard('product')">品番手入力</button>
 <button onclick="enableKeyboard('qty')">数量手入力</button><br>
 
 品番<br>
-<input id="product" readonly placeholder="品番" onblur="disableKeyboard('product')"><br>
+
+<input id="product" readonly placeholder="品番"
+onblur="disableKeyboard('product')"><br>
 
 数量<br>
-<input id="qty" readonly inputmode="numeric" placeholder="数量" onblur="disableKeyboard('qty')"><br>
+
+<input id="qty" readonly inputmode="numeric"
+placeholder="数量"
+onblur="disableKeyboard('qty')"><br>
 
 <button onclick="send()">OK</button>
 <button onclick="clearInput()">NG</button>
 <button onclick="restartCamera()">カメラ再起動</button>
 
-<div id="camera-container">
+<br><br>
 
-<div id="camera"></div>
-
-<div id="overlay-top" class="overlay"></div>
-<div id="overlay-bottom" class="overlay"></div>
-
-<div id="barcode-guide"></div>
-
-</div>
+<video id="camera" autoplay></video>
 
 <p id="msg"></p>
 
@@ -101,14 +96,20 @@ z-index:1;
 <script>
 
 let staffID='';
+
 let step=0;
+
 let lock=false;
-let scanner;
+
+let codeReader;
+
+
+// GAS URL
 
 const GAS_URL="https://script.google.com/macros/s/AKfycbwT67wBt95_UMkiClCDVivSh6p6StfjamTCfDKB5oXADMbBHLxcJVSrjuu6gYDX1bjJ/exec";
 
 
-// -------------------- 開始 --------------------
+// ---------------- 担当ID開始 ----------------
 
 function startApp(){
 
@@ -121,50 +122,24 @@ return;
 
 staffID=id;
 
-document.getElementById("staffDisplay").innerText=staffID;
+document.getElementById("staffDisplay").innerText=id;
 
 document.getElementById("staffEntry").style.display="none";
 document.getElementById("app").style.display="block";
-
-setOverlay();
 
 startScanner();
 
 }
 
 
-// -------------------- オーバーレイ --------------------
-
-function setOverlay(){
-
-const guide=document.getElementById('barcode-guide');
-const camera=document.getElementById('camera');
-
-const overlayTop=document.getElementById('overlay-top');
-const overlayBottom=document.getElementById('overlay-bottom');
-
-const guideRect=guide.getBoundingClientRect();
-const cameraRect=camera.getBoundingClientRect();
-
-const topHeight=guideRect.top-cameraRect.top;
-const bottomHeight=cameraRect.bottom-guideRect.bottom;
-
-overlayTop.style.top='0px';
-overlayTop.style.height=topHeight+'px';
-
-overlayBottom.style.bottom='0px';
-overlayBottom.style.height=bottomHeight+'px';
-
-}
-
-
-// -------------------- キーボード --------------------
+// ---------------- キーボード ----------------
 
 function enableKeyboard(id){
 
 const el=document.getElementById(id);
 
 el.readOnly=false;
+
 el.focus();
 
 }
@@ -176,41 +151,46 @@ document.getElementById(id).readOnly=true;
 }
 
 
-// -------------------- スキャナー --------------------
+// ---------------- スキャナー ----------------
 
 function startScanner(){
 
-scanner=new Html5Qrcode("camera");
+const hints = new Map();
 
-Html5Qrcode.getCameras().then(devices=>{
+hints.set(
+ZXing.DecodeHintType.POSSIBLE_FORMATS,
+[ZXing.BarcodeFormat.CODE_39]
+);
 
-if(devices && devices.length){
+codeReader = new ZXing.BrowserMultiFormatReader(hints);
 
-scanner.start(
-{ facingMode: { exact: "environment" } },
+const video = document.getElementById("camera");
 
-{
-fps:5,
-},
+codeReader.decodeFromVideoDevice(
+null,
+video,
+(result,err)=>{
 
-(decodedText,decodedResult)=>{
+if(result){
 
 if(lock) return;
 
-if(!decodedResult || !decodedResult.resultPoints) return;
-
 lock=true;
+
+const text=result.getText();
 
 document.getElementById("beep").play();
 
 if(step===0){
 
-document.getElementById("product").value=decodedText;
+document.getElementById("product").value=text;
+
 step=1;
 
 }else{
 
-document.getElementById("qty").value=decodedText;
+document.getElementById("qty").value=text;
+
 step=0;
 
 }
@@ -221,51 +201,33 @@ lock=false;
 
 }
 
+}
 );
 
-}else{
-
-alert("カメラが見つかりません");
-
-}
-
-}).catch(err=>alert("カメラ起動エラー: "+err));
-
 }
 
 
-// -------------------- カメラ再起動 --------------------
+// ---------------- カメラ再起動 ----------------
 
 function restartCamera(){
 
-if(scanner){
+if(codeReader){
 
-scanner.stop().then(()=>{
+codeReader.reset();
 
-startScanner();
-
-}).catch(err=>{
-
-console.error(err);
-
-startScanner();
-
-});
-
-}else{
+}
 
 startScanner();
 
 }
 
-}
 
-
-// -------------------- 送信 --------------------
+// ---------------- 送信 ----------------
 
 function send(){
 
 const product=document.getElementById("product").value;
+
 const qty=document.getElementById("qty").value;
 
 if(!product || !qty){
@@ -282,7 +244,9 @@ method:'POST',
 
 mode:'cors',
 
-headers:{'Content-Type':'text/plain'},
+headers:{
+'Content-Type':'text/plain'
+},
 
 body:JSON.stringify({
 staff:staffID,
@@ -321,7 +285,7 @@ console.error(err);
 }
 
 
-// -------------------- 入力クリア --------------------
+// ---------------- 入力クリア ----------------
 
 function clearInput(){
 
@@ -333,27 +297,6 @@ step=0;
 document.getElementById("msg").innerText="入力クリア";
 
 }
-
-
-// -------------------- 自動カメラ復帰 --------------------
-
-setInterval(()=>{
-
-if(scanner){
-
-try{
-
-scanner.getState();
-
-}catch{
-
-restartCamera();
-
-}
-
-}
-
-},10000);
 
 </script>
 
