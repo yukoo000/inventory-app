@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html>
+<html lang="ja">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>棚卸スキャン（ZXing + 自動50件＆タイムアウト送信）</title>
+<title>棚卸スキャン（GitHub Pages対応）</title>
 <script src="https://unpkg.com/@zxing/library@latest"></script>
 
 <style>
@@ -44,7 +44,7 @@ button{font-size:18px;padding:8px;margin:5px;}
   
   <br><br>
   <div id="camera-container">
-    <video id="camera" autoplay></video>
+    <video id="camera" autoplay playsinline></video>
     <div id="scan-area"></div>
   </div>
   <p id="msg"></p>
@@ -56,18 +56,13 @@ let step=0;
 let lock=false;
 let codeReader;
 let lastScanTime=0;
-
-// ★送信バッファ
 let buffer=[];
-
-// ★GAS URL
 const GAS_URL="https://script.google.com/macros/s/AKfycbwT67wBt95_UMkiClCDVivSh6p6StfjamTCfDKB5oXADMbBHLxcJVSrjuu6gYDX1bjJ/exec";
 
-// ★自動送信タイマー
+// タイマー設定
 let autoSendTimer=null;
 const AUTO_SEND_INTERVAL=30000; // 30秒
 
-// ---------------- 開始 ----------------
 function startApp(){
   const id=document.getElementById("staffInput").value.trim();
   if(!id){ alert("担当IDを入力してください"); return; }
@@ -78,11 +73,9 @@ function startApp(){
   startScanner();
 }
 
-// ---------------- キーボード ----------------
-function enableKeyboard(id){ const el=document.getElementById(id); el.readOnly=false; el.focus(); }
+function enableKeyboard(id){ document.getElementById(id).readOnly=false; document.getElementById(id).focus(); }
 function disableKeyboard(id){ document.getElementById(id).readOnly=true; }
 
-// ---------------- スキャナー ----------------
 function startScanner(){
   const hints = new Map();
   hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS,[ZXing.BarcodeFormat.CODE_39]);
@@ -117,10 +110,8 @@ function startScanner(){
   });
 }
 
-// ---------------- カメラ再起動 ----------------
 function restartCamera(){ if(codeReader){ codeReader.reset(); } startScanner(); }
 
-// ---------------- OKボタン：バッファ追加 ----------------
 function send(){
   const product=document.getElementById("product").value;
   const qty=document.getElementById("qty").value;
@@ -130,12 +121,10 @@ function send(){
   clearInput();
   document.getElementById("msg").innerText = buffer.length + "件バッファに追加";
 
-  // 50件自動送信
   if(buffer.length >= 50){ sendBuffered(); }
-  else{ resetAutoSendTimer(); } // タイマー再セット
+  else{ resetAutoSendTimer(); }
 }
 
-// ---------------- タイマー再セット ----------------
 function resetAutoSendTimer(){
   if(autoSendTimer) clearTimeout(autoSendTimer);
   autoSendTimer = setTimeout(()=>{
@@ -145,7 +134,6 @@ function resetAutoSendTimer(){
   }, AUTO_SEND_INTERVAL);
 }
 
-// ---------------- まとめて送信 ----------------
 function sendBuffered(){
   if(buffer.length === 0) return;
 
@@ -159,7 +147,7 @@ function sendBuffered(){
   .then(data=>{
     if(data.status==="ok"){
       document.getElementById("msg").innerText = buffer.length + "件まとめて保存しました";
-      buffer = [];
+      buffer=[];
     } else{
       document.getElementById("msg").innerText = "送信失敗";
     }
@@ -170,7 +158,6 @@ function sendBuffered(){
   });
 }
 
-// ---------------- 入力クリア ----------------
 function clearInput(){
   document.getElementById("product").value="";
   document.getElementById("qty").value="";
