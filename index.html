@@ -16,18 +16,33 @@ body{
 font-family:sans-serif;
 text-align:center;
 margin:10px;
+background-color: #fafdff; /* 水色 */
+color:#626063;
 }
 
 input{
 font-size:20px;
 margin:5px;
-width:80%;
+width:70%;
+background-color: #ffffff; /* 白 */
+border: 0.5px solid #abced8;
+color: #626063;
 }
 
 button{
 font-size:18px;
 padding:8px;
 margin:5px;
+background-color: #eaf4fc; /* 白藍 */
+border: 0.5px solid #abced8;
+border-radius: 5px;   
+color: #626063;
+}
+
+input:focus,
+button:focus {
+  outline: 1.5px solid #debecc; /* ピンクの枠 */
+  outline-offset: 1.5px;        /* 枠と要素の間隔 */
 }
 
 #camera-container{
@@ -102,7 +117,7 @@ onblur="disableKeyboard('qty')"><br>
 <button onclick="clearProduct()">品番削除</button>
 <button onclick="clearQty()">数量削除</button><br>
 
-<button onclick="sendBuffer()">まとめて送信</button>
+<button onclick="sendBuffer()">データの送信</button>
 <button onclick="restartCamera()">カメラ再起動</button>
 
 <br><br>
@@ -207,7 +222,7 @@ if(result){
 
 const now = Date.now();
 
-if(now - lastScanTime < 700) return;
+if(now - lastScanTime < 500) return;
 
 lastScanTime = now;
 
