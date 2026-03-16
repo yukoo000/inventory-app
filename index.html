@@ -16,7 +16,7 @@ body{
 font-family:sans-serif;
 text-align:center;
 margin:10px;
-background-color: #fafdff; /* 水色 */
+background-color: #fafdff;
 color:#626063;
 }
 
@@ -24,7 +24,7 @@ input{
 font-size:20px;
 margin:5px;
 width:70%;
-background-color: #ffffff; /* 白 */
+background-color: #ffffff;
 border: 0.5px solid #abced8;
 color: #626063;
 }
@@ -33,7 +33,7 @@ button{
 font-size:18px;
 padding:8px;
 margin:5px;
-background-color: #eaf4fc; /* 白藍 */
+background-color: #eaf4fc;
 border: 0.5px solid #abced8;
 border-radius: 5px;   
 color: #626063;
@@ -41,8 +41,8 @@ color: #626063;
 
 input:focus,
 button:focus {
-  outline: 1.5px solid #debecc; /* ピンクの枠 */
-  outline-offset: 1.5px;        /* 枠と要素の間隔 */
+outline: 1.5px solid #debecc;
+outline-offset: 1.5px;
 }
 
 #camera-container{
@@ -141,7 +141,6 @@ onblur="disableKeyboard('qty')"><br>
 <script>
 
 let staffID='';
-let step=0;
 let lock=false;
 let codeReader;
 let lastScanTime=0;
@@ -234,17 +233,28 @@ const text=result.getText();
 
 document.getElementById("beep").play();
 
-if(step===0){
+const hasLetter = /[A-Za-z]/.test(text);
+const onlyNumber = /^[0-9]+$/.test(text);
+const qtyFormat = /^[0-9]{1,6}$/;
+
+// 品番
+if(hasLetter){
 
 document.getElementById("product").value=text;
 
-step=1;
+}
 
-}else{
+// 数量
+else if(onlyNumber && qtyFormat.test(text)){
 
 document.getElementById("qty").value=text;
 
-step=0;
+}
+
+// 不正
+else{
+
+document.getElementById("msg").innerText="読み取りエラー";
 
 }
 
@@ -384,32 +394,17 @@ function clearInput(){
 document.getElementById("product").value="";
 document.getElementById("qty").value="";
 
-step=0;
-
 }
 
-
-// -------------- 品番or数量クリア --------------
-
 function clearProduct(){
-
 document.getElementById("product").value="";
-
-step=0;
-
 }
 
 function clearQty(){
-
 document.getElementById("qty").value="";
-
-step=1;
-
 }
-
 
 </script>
 
 </body>
-
 </html>
