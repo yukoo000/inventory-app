@@ -103,19 +103,16 @@ pointer-events:none;
 品番<br>
 
 <input id="product" readonly placeholder="品番"
-onblur="disableKeyboard('product')"><br>
+onblur="disableKeyboard('product')"><button onclick="clearProduct()">clear</button><br>
 
 数量<br>
 
 <input id="qty" readonly inputmode="numeric"
 placeholder="数量"
-onblur="disableKeyboard('qty')"><br>
+onblur="disableKeyboard('qty')"><button onclick="clearQty()">clear</button><br><br>
 
 <button onclick="saveData()">OK</button>
 <button onclick="clearInput()">NG</button><br>
-
-<button onclick="clearProduct()">品番削除</button>
-<button onclick="clearQty()">数量削除</button><br>
 
 <button onclick="sendBuffer()">データの送信</button>
 <button onclick="restartCamera()">カメラ再起動</button>
